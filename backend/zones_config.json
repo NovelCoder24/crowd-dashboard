@@ -1,0 +1,8 @@
+{
+    "CAM_ZONE_ALPHA": {
+        "name": "Live Phone Stream",
+        "area_sqm": 25,
+        "warning_threshold": 3,
+        "critical_threshold": 5
+    }
+}
