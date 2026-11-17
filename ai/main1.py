@@ -7,7 +7,7 @@ from ultralytics import YOLO
 
 CAMERA_ID = "CAM_ZONE_ALPHA"
 BACKEND_URL = "http://localhost:3000/api/density"
-VIDEO_SOURCE = "http://192.0.0.8:8080/video" 
+VIDEO_SOURCE = "http://10.98.140.151:8080/video" 
 
 PROCESS_EVERY_N_FRAMES = 5
 M2_WIDTH, M2_HEIGHT = 300, 300

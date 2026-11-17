@@ -1,8 +1,38 @@
 {
-    "CAM_ZONE_ALPHA": {
-        "name": "Live Phone Stream",
-        "area_sqm": 25,
-        "warning_threshold": 3,
-        "critical_threshold": 5
-    }
+  "CAM_ZONE_ALPHA": {
+    "id": "CAM_ZONE_ALPHA",
+    "name": "Concourse Main",
+    "area_sqm": 120,
+    "capacity": 300,
+    "warning_threshold": 2.5,
+    "critical_threshold": 4.0,
+    "location": "Central Terminal - Floor 1",
+    "description": "Main concourse connecting arrival corridors with high transit volume.",
+    "coordinates": { "x": 38, "y": 45 },
+    "floor": "Floor 1"
+  },
+  "CAM_ZONE_BETA": {
+    "id": "CAM_ZONE_BETA",
+    "name": "North Concourse",
+    "area_sqm": 90,
+    "capacity": 200,
+    "warning_threshold": 2.5,
+    "critical_threshold": 4.0,
+    "location": "North Corridor - Access to Gates 1-12",
+    "description": "Secondary transit walkway near duty free shops and dining area.",
+    "coordinates": { "x": 68, "y": 30 },
+    "floor": "Floor 1"
+  },
+  "CAM_ZONE_GAMMA": {
+    "id": "CAM_ZONE_GAMMA",
+    "name": "Gate 4",
+    "area_sqm": 60,
+    "capacity": 120,
+    "warning_threshold": 2.0,
+    "critical_threshold": 3.5,
+    "location": "Departure Gate 4 Waiting Lounge",
+    "description": "Boarding gate queue area with bottleneck risks during boarding calls.",
+    "coordinates": { "x": 78, "y": 72 },
+    "floor": "Ground"
+  }
 }

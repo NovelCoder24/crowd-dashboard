@@ -1,28 +1,22 @@
+import os
 import cv2
 import time
 import requests
 import numpy as np
-import threading
-from flask import Flask, Response
-from flask_cors import CORS
 from concurrent.futures import ThreadPoolExecutor
 from ultralytics import YOLO
 
-app = Flask(__name__)
-CORS(app) # Allow React frontend to access the stream
-
-global_frame = None
-lock = threading.Lock()
+script_dir = os.path.dirname(os.path.abspath(__file__))
 
 CAMERA_ID = "CAM_ZONE_ALPHA"
 BACKEND_URL = "http://localhost:3000/api/density"
-VIDEO_SOURCE = "http://10.98.140.151:8080/video" 
+VIDEO_SOURCE = "3.mp4"
 
 PROCESS_EVERY_N_FRAMES = 5
 M2_WIDTH, M2_HEIGHT = 300, 300
 
 print("[INFO] Loading YOLO11-Nano with ByteTrack...")
-model = YOLO('yolo11n.pt')
+model = YOLO(os.path.join(script_dir, 'yolo11n.pt'))
 
 http_session = requests.Session()
 webhook_executor = ThreadPoolExecutor(max_workers=2)
@@ -51,6 +45,11 @@ def main():
         print(f"[ERROR] Could not open {VIDEO_SOURCE}. Falling back to webcam...")
         cap = cv2.VideoCapture(0)
 
+    # Calculate frame delay to play video files at natural 1x speed
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    is_video_file = isinstance(VIDEO_SOURCE, str) and not VIDEO_SOURCE.startswith("http")
+    wait_ms = int(1000 / fps) if (is_video_file and fps and 0 < fps <= 120) else 1
+
     frame_count = 0
     
     last_boxes = []
@@ -66,18 +65,28 @@ def main():
         ret, frame = cap.read()
         
         if not ret:
-            print("[WARNING] Video stream dropped. Attempting to reconnect...")
-            time.sleep(1)
-            cap = cv2.VideoCapture(VIDEO_SOURCE)
-            continue
+            # Simple continuous loop: rewind to the start
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ret, frame = cap.read()
+            if not ret:
+                cap = cv2.VideoCapture(VIDEO_SOURCE)
+                continue
 
         h, w, _ = frame.shape
         total_area_m2 = (w * h) / (M2_WIDTH * M2_HEIGHT)
         frame_count += 1
         
         if frame_count % PROCESS_EVERY_N_FRAMES == 0:
-            results = model.track(frame, classes=[0], conf=0.30, imgsz=640, 
-                                  persist=True, tracker="bytetrack.yaml", verbose=False)
+            results = model.track(
+                frame,
+                classes=[0],
+                conf=0.15,
+                iou=0.55,
+                imgsz=1024,
+                persist=True,
+                tracker="bytetrack.yaml",
+                verbose=False
+            )
             
             last_boxes = results[0].boxes.xyxy.cpu().numpy()
             raw_count = len(last_boxes)
@@ -143,35 +152,16 @@ def main():
         cv2.putText(frame, f"Hotspot Density   : {int(round(smoothed_hotspot))} ppl/m^2", (20, 145), font, 0.7, (0, 165, 255), 2)
         cv2.putText(frame, f"SYSTEM STATUS : {last_status}", (20, 170), font, 0.7, last_color, 2)
 
-        with lock:
-            global_frame = frame.copy()
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        try:
+            cv2.imshow("Drishti-Safe AI Edge Stream", frame)
+            if cv2.waitKey(wait_ms) & 0xFF == ord('q'):
+                break
+        except cv2.error:
+            # If OpenCV is in headless mode, maintain normal playback speed
+            time.sleep(wait_ms / 1000.0)
 
     cap.release()
     cv2.destroyAllWindows()
 
-def generate_frames():
-    global global_frame
-    while True:
-        with lock:
-            if global_frame is None:
-                continue
-            ret, buffer = cv2.imencode('.jpg', global_frame)
-            frame = buffer.tobytes()
-            
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-        time.sleep(0.03)
-
-@app.route('/video_feed')
-def video_feed():
-    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
 if __name__ == "__main__":
-    t = threading.Thread(target=main)
-    t.daemon = True
-    t.start()
-    print("[INFO] Starting Flask server on port 5000 for Video Stream...")
-    app.run(host="0.0.0.0", port=5000, threaded=True, use_reloader=False)
+    main()
